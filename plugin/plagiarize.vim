@@ -87,7 +87,10 @@ def clean_string(string):
 def prepare_titles(question_list):
   """ Takes a bunch of questions and prepares the titles for display in inputlist """
   formatstr = "'%d. %s || Score: %d || #Answers: %d || Accepted Answer: %r'"
-  return [formatstr % (ind, clean_string(i['title']), i['score'], i['answer_count'], (i['accepted_answer_id'] != None)) for ind, i in enumerate(question_list[:-2])]
+  prepared =  [formatstr % (ind, clean_string(i['title']), i['score'], i['answer_count'], (i['accepted_answer_id'] != None)) for ind, i in enumerate(question_list[:-2])]
+  prepared.append(question_list[-2])
+  prepared.append(question_list[-1])
+  return prepared
 
 def prepare_answers(answer_list):
   """ Takes a bunch of answers and prepares them for display in inputlist """
@@ -95,6 +98,7 @@ def prepare_answers(answer_list):
   max_len = 80 # arbitrary character limit, will also replace the last three characters of this '...'
   try:
     prepared = [formatstr % (ind, i['score'], clean_string(i['body'][:max_len-3] + '...'), i['is_accepted']) for ind, i in enumerate(answer_list[:-1])]
+    prepared.append(answer_list[-1])
     return prepared
   except TypeError:
     print answer_list
@@ -104,17 +108,17 @@ def display_questions(shitty_api_obj, line_offset):
   """ Function that will manage interacting with the user on displaying and
   asking for questions """
   # shitty_api_obj should be pre-loaded with the question list sorted however
-  this_slice = shitty_api_obj.sorted_questions[line_offset:LINES]
+  this_slice = shitty_api_obj.sorted_questions[line_offset:line_offset + LINES]
   this_slice.append("\"%d. More\"" % LINES)
   this_slice.append("\"%d. Nah quit\"" % (LINES+1))
   choices_str = "[" + ",".join(prepare_titles(this_slice)) + "]"
   choice_made = int(vim.eval("inputlist(" + choices_str + ")")) # fuck me
   # Three cases now:
   # choice_made == LINES: increment line_offset by LINES, call this function again
-  if choice_made == LINES:
-    display_questions(shitty_api_obj, line_offset + LINES)
+  if choice_made == len(this_slice) - 2:
+    return display_questions(shitty_api_obj, line_offset + LINES)
   # or the user is like nah
-  elif choice_made == LINES + 1:
+  elif choice_made == len(this_slice) - 1:
     return
   # or actually we want one of them god forbid
   elif choice_made >= 0 and choice_made < LINES:
@@ -157,7 +161,7 @@ def display_answers(shitty_api_obj):
   this_slice.append("\"%d. Nah quit\"" % LINES)
   choices_str = "[" + ",".join(prepare_answers(this_slice)) + "]"
   choice_made = int(vim.eval("inputlist(" + choices_str + ")")) # fuck me
-  if choice_made == LINES:
+  if choice_made == len(this_slice):
     return
   elif choice_made >= 0 and choice_made < LINES:
     retcode = display_answer(this_slice[choice_made]['body'])
