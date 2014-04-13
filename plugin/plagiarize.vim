@@ -75,7 +75,6 @@ class ShittyAPI:
 
 
   def get_answer(self, answer_id):
-    print type(answer_id)
     req_url = '%s/answers/%d?site=%s&filter=!-*7AsVvqc(wE' % (self.url, answer_id, self.site)
     req = requests.get(req_url)
     parsed_req = json.loads(req.text)
@@ -161,11 +160,13 @@ def display_answers(shitty_api_obj):
   this_slice.append("\"%d. Nah quit\"" % LINES)
   choices_str = "[" + ",".join(prepare_answers(this_slice)) + "]"
   choice_made = int(vim.eval("inputlist(" + choices_str + ")")) # fuck me
-  if choice_made == len(this_slice):
+  if choice_made == len(this_slice) or len(this_slice) == 1:
     return
   elif choice_made >= 0 and choice_made < LINES:
-    retcode = display_answer(this_slice[choice_made]['body'])
-  return retcode
+    if len(this_slice) > 1:
+      return display_answer(this_slice[choice_made]['body'])
+    else:
+      return
 
 def display_answer(answer_text):
   """ Displays an answer with a confirm dialog for copying into a register or
@@ -178,7 +179,8 @@ def display_answer(answer_text):
     return 1
   elif choice == 1:
     # Copy it into the registers
-    vim.command( "let @%s=\"'%s'\"" % ('r', clean_string(answer_text) ))
+    answer_text = '\n'.join([comment_char + i for i in answer_text.split('\n')]) 
+    vim.command( "let @%s=\"%s\"" % ('r', clean_string(answer_text) ))
     print "Answer is available in register r"
     return 0
     
@@ -186,10 +188,11 @@ def display_answer(answer_text):
 so = ShittyAPI()
 endpython
 
-function! SOSearch(search_text)
+function! SOSearch(search_text, comment_char)
 python << endpython
 
 search_text = vim.eval("a:search_text")
+comment_char = vim.eval("a:comment_char")
 so.get_questions(search_text)
 # Now compile the string of options for inputlist, but limit it to 10 (sorted by votes)
 so.sorted_questions = sorted(so.questions, key=lambda x: x['score'])
