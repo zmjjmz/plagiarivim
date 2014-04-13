@@ -22,7 +22,7 @@ class ShittyAPI:
   def get_questions(self, search_term):
     """ Simply grabs the questions from StackOverflow with search_term in the title """
     encoded_term = urllib2.quote(search_term)
-    req_url = '%s/search?order=desc&sort=votes&filter=withbody&site=%s&intitle=%s' % (self.url, self.site, encoded_term)
+    req_url = '%s/search?order=desc&sort=votes&filter=!-*7AsVvqc(wE&site=%s&intitle=%s' % (self.url, self.site, encoded_term)
     req = requests.get(req_url)
     parsed_req = json.loads(req.text)
     # We care about the following in each question
@@ -40,7 +40,7 @@ class ShittyAPI:
 
       wanted_info.append({'question_id':question['question_id'],
 			  'title':question['title'],
-			  'body':question['body'],
+			  'body':question['body_markdown'],
 			  'answer_count':question['answer_count'],
 			  'link':question['link'],
 			  'accepted_answer_id':accepted_answer,
@@ -52,7 +52,7 @@ class ShittyAPI:
 
   def get_answers(self, question_id):
     """ Simply grabs the answers for a given question id """
-    req_url = '%s/questions/%s/answers?site=%s&sort=votes&filter=withbody' % (self.url, question_id, self.site)
+    req_url = '%s/questions/%s/answers?site=%s&sort=votes&filter=!-*7AsVvqc(wE' % (self.url, question_id, self.site)
     req = requests.get(req_url)
     parsed_req = json.loads(req.text)
     # For each answer we want the following
@@ -63,7 +63,7 @@ class ShittyAPI:
     wanted_info = []
     for answer in parsed_req['items']:
       wanted_info.append({'answer_id': answer['answer_id'],
-			 'body': answer['body'],
+			 'body': answer['body_markdown'],
 			 'score': answer['score'],
 			 'is_accepted': answer['is_accepted']
 			 })
@@ -76,10 +76,10 @@ class ShittyAPI:
 
   def get_answer(self, answer_id):
     print type(answer_id)
-    req_url = '%s/answers/%d?site=%s&filter=withbody' % (self.url, answer_id, self.site)
+    req_url = '%s/answers/%d?site=%s&filter=!-*7AsVvqc(wE' % (self.url, answer_id, self.site)
     req = requests.get(req_url)
     parsed_req = json.loads(req.text)
-    return parsed_req['items'][0]['body']
+    return parsed_req['items'][0]['body_markdown']
 
 def clean_string(string):
   return string.replace("\"","\'").replace("\'","\'\'")
