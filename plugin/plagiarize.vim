@@ -31,14 +31,15 @@ class ShittyAPI:
     # link (for opening in external browser)
     # question_id
     # accepted_answer_id
-    wanted_info = dict()
+    wanted_info = []
     for question in parsed_req['items']:
       try:
 	accepted_answer = question['accepted_answer_id']
       except KeyError:
 	accepted_answer = None
 
-      wanted_info[question['question_id']] = {'title':question['title'],
+      wanted_infoi.append({'question_id':question['question_id'],
+			  'title':question['title'],
 			  'body':question['body'],
 			  'answer_count':question['answer_count'],
 			  'link':question['link'],
@@ -59,9 +60,10 @@ class ShittyAPI:
     # score (i.e. votes)
     # is_accepted
     # answer_id
-    wanted_info = dict()
+    wanted_info = []
     for answer in parsed_req['items']:
-      wanted_info[answer['answer_id']] = {'body': answer['body'],
+      wanted_info.append({'answer': answer['answer_id'],
+			 'body': answer['body'],
 			 'score': answer['score'],
 			 'is_accepted': answer['is_accepted']
 			 }
@@ -80,6 +82,53 @@ def prepare_titles(question_list):
   formatstr = "'%d. %s || Score: %d || #Answers: %d || Accepted Answer: %r'"
   return [formatstr % (ind, i['title'], i['score'], i['answer_count'], (i['accepted_answer_id'] != None)) for ind, i in enumerate(question_list)]
 
+def display_questions(shitty_api_obj, line_offset):
+  """ Function that will manage interacting with the user on displaying and
+  asking for questions """
+  # shitty_api_obj should be pre-loaded with the question list sorted however
+  this_slice = shitty_api_obj.sorted_questions[line_offset:LINES]
+  choices_str = "[" + ",".join(prepare_titles(this_slice)) + ("'%d. More','%d. Nah quit']" % (LINES, LINES+1))
+  choice_made = int(vim.eval("inputlist(" + choices_str + ")")) # fuck me
+  # Three cases now:
+  # choice_made == LINES: increment line_offset by LINES, call this function again
+  if choice_made == LINES:
+    display_questions(shitty_api_obj, line_offset + LINES)
+  # or the user is like nah
+  elif choice_made == LINES + 1:
+    return
+  # or actually we want one of them god forbid
+  elif choice_made >= 0 and choice_made < LINES:
+    retcode = display_question(this_slice[choice_made]) # this will display the specific question and prompt the user for all sorts of stuff...
+    if retcode == 0:
+      return
+    display_questions(shitty_api_obj, line_offset) # this will redo this function if the user doesn't quite like that
+
+def display_question(question):
+  """ Displays a confirm dialog asking whether or not a user wants that
+  question's answer displayed """
+  display_text = question['body']
+  if question['accepted_answer_id'] != None:
+    acc = 1
+    choices = "&Accepted Answer\n&See Answers\nGo &Back"
+  else:
+    acc = 0
+    choices = "&See Answers\nGo &Back"
+  option_chosen = int(vim.eval("(%s, %s, 1)" % (display_text, choices)))
+  if option_chosen == 0:
+    # User wants to leave
+    return 0
+  elif option_chosen == 1 and acc == 1:
+    # User just wants to see the accepted answers
+  elif option_chosen == 1 + acc:
+    # User wants to investigate this question's answers
+  elif option_chosen == 2 + acc:
+    return
+
+
+
+  
+
+
   
 so = ShittyAPI()
 endpython
@@ -90,11 +139,9 @@ python << endpython
 search_text = vim.eval("a:search_text")
 so.get_questions(search_text)
 # Now compile the string of options for inputlist, but limit it to 10 (sorted by votes)
-sorted_q = sorted(so.questions.values(), key=lambda x: x['score'])
-choices = prepare_titles(sorted_q[wasted_lines:wasted_lines+LINES]) # get from wasted_lines to LINES possible questions
-# Now turn choices into a vim list
-choices_str = "[" + ",".join(choices) + "]"
-choice_made = vim.eval("inputlist(" + choices_str + ")") # jesus christ
+so.sorted_questions = sorted(so.questions.values(), key=lambda x: x['score'])
+# Now we do the fun thing of displaying a dialog with the question text, basically asking if they want that one or not.
+display_questions(so, 0)
 
 endpython
 endfunction!
